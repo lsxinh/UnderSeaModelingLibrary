@@ -1003,32 +1003,6 @@ BOOST_AUTO_TEST_CASE( bottom_type_effects ) {
         << "\t  " << (*iter).phase(0)
         << endl;
     }
-
-    bottom->reflect_loss( new reflect_loss_rayleigh( reflect_loss_rayleigh::MUD ) ) ;
-    delete pLoss ;
-    delete pWave ;
-    pLoss = new proploss(freq, pos, de, az, dt, &target) ;
-    pWave = new wave_queue( ocean, freq, pos, de, az, dt, &target ) ;
-    pWave->addProplossListener(pLoss) ;
-
-    while(pWave->time() < time_max) {
-        pWave->step();
-    }
-
-    pLoss->sum_eigenrays();
-    cout << "=====Eigenrays --> Rayleigh::MUD=====" << endl ;
-    cout << "time (s)\tbounces(s,b,c)\tlaunch angle\tarrival angle\t   TL\t\t    phase" << endl ;
-    cout << std::setprecision(5) ;
-    for (eigenray_list::const_iterator iter = pLoss->eigenrays(0, 0)->begin(); iter != pLoss->eigenrays(0, 0)->end(); ++iter)
-    {
-        cout << (*iter).time
-        << "\t\t   (" << (*iter).surface << ", " << (*iter).bottom << ", " << (*iter).caustic << ")"
-        << "\t  " << (*iter).source_de
-        << "\t\t  " << (*iter).target_de
-        << "\t\t  " << (*iter).intensity(0)
-        << "\t  " << (*iter).phase(0)
-        << endl;
-    }
 }
 
 /// @}
