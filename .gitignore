@@ -5,17 +5,17 @@
 # *.[oa]
 # *~
 *.csv
-*.nc
 *.log
+*.nc
 /html
 *.bak
-/make_tar_wlinks.sh
 .settings/
+scripts/
 /saveforWin
 /*.ldb
 /*.eap
-/integ
 /.project
 /.cproject
 /msg
 *~
+/usml.spec
