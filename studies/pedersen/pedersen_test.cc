@@ -117,7 +117,8 @@ void analyze_raytrace(
     ocean_model* ocean = build_ocean() ;
     seq_log freq( FREQ, 1.0, 1 ) ;
     wposition1 pos( LAT_SOURCE, LNG_SOURCE, source_depth );
-    seq_linear az(0.0,1.0,1);       // only 1 ray needed for ray trace
+//    seq_linear az(0.0,1.0,1);       // only 1 ray needed for ray trace
+    seq_linear az(-4.0,1.0,4.0);
 
     // compute the ray trace and store wavefronts to disk
 
@@ -253,7 +254,7 @@ BOOST_AUTO_TEST_CASE( pedersen_deep_raytrace ) {
     cout << "=== pedersen_deep_raytrace ===" << endl ;
     seq_linear de( 20.00, 0.2, 60.00 ) ;
     analyze_raytrace( -1000.0, de,
-        2.0, 0.02, 3.5,
+        2.0, 0.01, 3.5,
         0.008, 10.0, 0.03,
         USML_STUDIES_DIR "/pedersen/pedersen_deep_raytrace.nc",
         USML_STUDIES_DIR "/pedersen/pedersen_deep_raytrace.csv" ) ;
@@ -382,7 +383,8 @@ BOOST_AUTO_TEST_CASE( pedersen_shallow_proploss ) {
  */
 BOOST_AUTO_TEST_CASE( pedersen_deep_proploss ) {
     cout << "=== pedersen_deep_proploss ===" << endl ;
-    seq_linear ranges(3000.0,0.25,3120.0) ;
+//    seq_linear ranges(3000.0,0.25,3120.0) ;
+    seq_linear ranges(3030.0,0.25,1) ;
 //    seq_rayfan de( 20.0, 60.0, 181, 51.21 ) ;
     seq_linear de( 20.0, 0.2, 60.0 ) ;
     analyze_proploss( de, -1000.0, -800.0, ranges,

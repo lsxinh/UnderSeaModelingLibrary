@@ -4,6 +4,7 @@
  */
 #include <usml/waveq3d/spreading_hybrid_gaussian.h>
 
+#define USML_WAVEQ3D_DEBUG_DE
 using namespace usml::waveq3d;
 
 const double spreading_hybrid_gaussian::SPREADING_WIDTH = TWO_PI ;
@@ -106,6 +107,18 @@ const vector<double>& spreading_hybrid_gaussian::intensity(
 void spreading_hybrid_gaussian::intensity_de( size_t de, size_t az,
     const vector<double>& offset, const vector<double>& distance )
 {
+    #ifdef USML_WAVEQ3D_DEBUG_DE
+        cout << "spreading_hybrid_gaussian::intensity_de:"
+             << endl << "\ttime=" << _wave._time
+             << " de(" << de << ")=" << (*_wave._source_de)(de)
+             << " az(" << az << ")=" << (*_wave._source_az)(az)
+             << " srf=" << _wave._curr->surface(de, az)
+             << " btm=" << _wave._curr->bottom(de, az)
+             << " cst=" << _wave._curr->caustic(de, az)
+             << " offset=" << offset(1)
+             << " distance=" << distance(1)
+             << endl;
+    #endif
     // compute contribution from center cell
     int d = (int) de ;
     double cell_width = width_de(d, az, offset) ;// half width of center cell
@@ -114,14 +127,34 @@ void spreading_hybrid_gaussian::intensity_de( size_t de, size_t az,
     double cell_dist = L - cell_width ;           // dist from center of this cell
     _intensity_de = gaussian(cell_dist, cell_width, _norm_de(d)) ;
 
-    // contribution from DE angle one lower than central cell
+    #ifdef USML_WAVEQ3D_DEBUG_DE
+        cout << "\t** center" << endl
+             << "\tde(" << d << ")=" << (*_wave._source_de)(d)
+             << " cell_dist=" << cell_dist
+             << " cell_width=" << cell_width
+             << " beam_width=" << sqrt(_beam_width)
+             << " norm=" << _norm_de(d)
+             << " intensity=" << _intensity_de
+             << endl
+             << "\t** lower " << endl;
+    #endif
+
 
     d = (int) de - 1 ;
     cell_width = width_de(d, az, offset) ;   // half width of this cell
     cell_dist = L + cell_width ;             // dist from center of this cell
     _intensity_de += gaussian(cell_dist, cell_width, _norm_de(d)) ;
 
-    // exit early if central rays have a tiny contribution
+    #ifdef USML_WAVEQ3D_DEBUG_DE
+        cout << "\tde(" << d << ")=" << (*_wave._source_de)(d)
+             << " cell_dist=" << cell_dist
+             << " cell_width=" << cell_width
+             << " beam_width=" << sqrt(_beam_width)
+             << " norm=" << _norm_de(d)
+             << " intensity=" << _intensity_de
+             << endl;
+    #endif
+
 
     if( _intensity_de(0) < 1e-10 ) return ;
 
@@ -150,7 +183,16 @@ void spreading_hybrid_gaussian::intensity_de( size_t de, size_t az,
 
         _intensity_de += gaussian(cell_dist, cell_width, _new_norm) ;
 
-        if( _intensity_de(0) / old_tl < THRESHOLD ) break ;
+        #ifdef USML_WAVEQ3D_DEBUG_DE
+            cout << "\tde(" << d << ")=" << (*_wave._source_de)(d)
+                 << " cell_dist=" << cell_dist
+                 << " cell_width=" << cell_width
+                 << " beam_width=" << sqrt(_beam_width)
+                 << " norm=" << _norm_de(d)
+                 << " intensity=" << _intensity_de
+                 << endl;
+        #endif
+        if ( _intensity_de(0) / old_tl < THRESHOLD ) break;
         if( virtual_ray ) break ;
     }
 
@@ -182,7 +224,16 @@ void spreading_hybrid_gaussian::intensity_de( size_t de, size_t az,
         const double old_tl = _intensity_de(0) ;
         _intensity_de += gaussian(cell_dist, cell_width, _new_norm) ;
 
-        if( _intensity_de(0) / old_tl < THRESHOLD ) break ;
+        #ifdef USML_WAVEQ3D_DEBUG_DE
+            cout << "\tde(" << d << ")=" << (*_wave._source_de)(d)
+                 << " cell_dist=" << cell_dist
+                 << " cell_width=" << cell_width
+                 << " beam_width=" << sqrt(_beam_width)
+                 << " norm=" << _norm_de(d)
+                 << " intensity=" << _intensity_de
+                 << endl;
+        #endif
+        if ( _intensity_de(0) / old_tl < THRESHOLD ) break;
         if( virtual_ray ) break ;
     }
 }

@@ -15,8 +15,8 @@ function pedersen_deep_raytrace
     follow = false ;
     lat_offset = 45.0 ;
 
-    wavefront = load_netcdf_wavefront('pedersen_deep_raytrace.nc') ;
-    proploss = load_netcdf_proploss('pedersen_deep_proploss.nc') ;
+    wavefront = load_netcdf_wavefront('pedersen_deep_raytrace_bytype.nc') ;
+    proploss = load_netcdf_proploss('pedersen_deep_proploss_bytype.nc') ;
     wave_max_time = length(wavefront.travel_time) ;
     time = 145 ;
     de = 1:length(wavefront.source_de) ;

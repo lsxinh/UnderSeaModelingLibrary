@@ -15,6 +15,7 @@
 
 #include <iomanip>
 
+#define DEBUG_EIGENRAYS
 using namespace usml::waveq3d ;
 
 /**
@@ -403,7 +404,33 @@ void wave_queue::build_eigenray(
    size_t de, size_t az,
    double distance2[3][3][3] )
 {
-    // compute offsets
+    #ifdef DEBUG_EIGENRAYS
+        cout << "*** wave_queue::step: time=" << time() << endl ;
+        wposition1 tgt( *(_curr->targets), t1, t2 ) ;
+        cout << "*** wave_queue::build_eigenray:"
+             << " target(" << t1 << "," << t2 << ")="
+             << tgt.altitude() << "," << tgt.latitude() << "," << tgt.longitude()
+             << " time=" << _time
+             << " de(" << de << ")=" << (*_source_de)(de)
+             << " az(" << az << ")=" << (*_source_az)(az)
+             << endl ;
+        cout << "\tsurface=" << _curr->surface(de,az)
+             << " bottom=" << _curr->bottom(de,az)
+             << " caustic=" << _curr->caustic(de,az) << endl ;
+        cout << "\tdistance2:" << endl ;
+        for ( unsigned n1=0 ; n1 < 3 ; ++n1 ) {
+            cout << "\t    " ;
+            for ( unsigned n2=0 ; n2 < 3 ; ++n2 ) {
+                cout << ((n2)? "; " : "[ " ) ;
+                for ( unsigned n3=0 ; n3 < 3 ; ++n3 ) {
+                    cout << ((n3)? "," : "[" ) << distance2[n1][n2][n3] ;
+                }
+                cout << "]" ;
+            }
+            cout << " ]" << endl ;
+        }
+	#endif
+
     // limit to simple inverse if path types change in this neighborhood
 
     c_vector<double, 3> delta, offset, distance;
@@ -576,6 +603,12 @@ void wave_queue::build_eigenray(
     ray.target_az = center + inner_prod( gradient, offset )
                   + 0.5 * inner_prod( offset, prod( hessian, offset ) ) ;
 
+    #ifdef DEBUG_OUTPUT_EIGENRAYS
+    cout << "wave_queue::build_eigenray() " << endl
+    		 << "\ttarget(" << t1 << "," << t2 << "):" << endl
+             << "\tt=" << ray.time << " inten=" << ray.intensity << " de=" << ray.source_de << " az=" << ray.source_az << endl
+             << "\tsurface=" << ray.surface << " bottom=" << ray.bottom << " caustic=" << ray.caustic << endl ;
+    #endif
     // Add eigenray to those objects which requested them
     notifyEigenrayListeners(t1,t2,ray);
 
@@ -589,23 +622,16 @@ void wave_queue::compute_offsets(
     c_vector<double,3>& offset, c_vector<double,3>& distance,
     bool& unstable )
 {
+    unstable = false ;
+
     // compute 1st and 2nd derivatives of distance2
     // use analytic solution for the determinant of a 3x3 matrix
 
+    scalar_vector<double> unit(3,1.0);
     double center ;
     c_vector<double,3> gradient ;
     c_matrix<double,3,3> hessian ;
-    make_taylor_coeff( distance2, delta, center, gradient, hessian, unstable ) ;
-
-    // fallback offset calculation using just diagonals
-    // if inverse can not be computed because determinant is zero
-    // non-positive hessian diags are an indication that offset is unstable
-
-    for ( size_t n=0 ; n < 3 ; ++n ) {
-        const double h = max( 1e-10, hessian(n,n) ) ;
-        offset(n) = -gradient(n) / h ;
-    }
-    if ( abs(offset(1)/delta(1)) > 0.5 ) unstable = true ;
+    make_taylor_coeff( distance2, unit, center, gradient, hessian, unstable ) ;
 
     // compute offsets
     // solves H x = g using x = inv(H) g ;
@@ -615,7 +641,32 @@ void wave_queue::compute_offsets(
         hessian(0,0) * ( hessian(1,1) * hessian(2,2) - hessian(1,2) * hessian(2,1) )
       + hessian(0,1) * ( hessian(1,2) * hessian(2,0) - hessian(1,0) * hessian(2,2) )
       + hessian(0,2) * ( hessian(1,0) * hessian(2,1) - hessian(2,1) * hessian(2,0) ) ;
-    if ( abs(determinant) > 1e-10 ) {
+    unstable = abs(determinant) < 1e-10 ;
+
+    #ifdef DEBUG_EIGENRAYS
+        cout << "*** wave_queue::compute_offsets ***" << endl ;
+        cout << "\tgradient: " << gradient << endl ;
+        cout << "\thessian: " << hessian << endl ;
+        cout << "\tdeterminant: " << determinant << endl ;
+    #endif
+
+    if ( unstable ) {
+        #ifdef DEBUG_EIGENRAYS
+            if (unstable) cout << "\tsimple inv" ;
+        #endif
+        for ( size_t n=0 ; n < 3 ; ++n ) {
+            const double h = max( 1e-10, hessian(n,n) ) ;
+            offset(n) = -gradient(n) / h * delta(n) ;
+        }
+        distance(1) = center - distance(0) - distance(2) ;
+        for ( size_t n=0 ; n < 3 ; ++n ) {
+            distance(n) = sqrt( max( 0.0, distance(n) ) ) ;
+            if ( offset(n) < 0.0 ) distance(n) *= -1.0 ;
+        }
+    } else {
+        #ifdef DEBUG_EIGENRAYS
+            cout << "\tfull inverse" ;
+        #endif
         c_matrix<double,3,3> inverse ;
         inverse(0,0) = hessian(1,1) * hessian(2,2) - hessian(1,2) * hessian(2,1) ;
         inverse(1,0) = hessian(1,2) * hessian(2,0) - hessian(1,0) * hessian(2,2) ;
@@ -627,29 +678,23 @@ void wave_queue::compute_offsets(
         inverse(1,2) = inverse(2,1) ;
         inverse(2,2) = hessian(0,0) * hessian(1,1) - hessian(0,1) * hessian(1,0) ;
         inverse /= determinant ;
-        noalias(offset) = prod( inverse, -gradient ) ;
+        noalias(offset) = element_prod( delta, prod( inverse, -gradient ) ) ;
 
+        for ( size_t n=0 ; n < 3 ; ++n ) {
+            distance(n) = -gradient(n)*offset(n)
+                    -0.5*hessian(n,n)*offset(n)*offset(n) ;
+            distance(n) = sqrt( max( 0.0, distance(n) ) ) ;
+            if ( offset(n) < 0.0 ) distance(n) *= -1.0 ;
+        }
+        distance(1) = sqrt( max( 0.0, center - distance(0) - distance(2) ) ) ;
+        if ( offset(1) < 0.0 ) distance(1) *= -1.0 ;
     }
 
-    // compute distances from offsets
-    // for each coordinate, assumes the other two offsets are zero
-    // fixes DE distance instablity outside of ray fan
-    for ( size_t n=0 ; n < 3 ; ++n ) {
-        distance(n) = -gradient(n)*offset(n)
-                -0.5*hessian(n,n)*offset(n)*offset(n) ;
-    }
-    if ( unstable ) {
-        distance(1) = center - distance(0) - distance(2) ;
-    }
-
-    // take sqrt() of distance and give it same sign as offset
-    // clip offsets to +/- one beam
-
-    for ( size_t n=0 ; n < 3 ; ++n ) {
-        distance(n) = sqrt( max( 0.0, distance(n) ) ) ;
-        if ( offset(n) < 0.0 ) distance(n) *= -1.0 ;
-        offset(n) = max( -delta(n), min(delta(n),offset(n)) ) ;
-    }
+    #ifdef DEBUG_EIGENRAYS
+        cout << " gradient: " << gradient(0) << "," << gradient[1] << "," << gradient[2]
+             << " curvature:  " << hessian(0,0) << "," << hessian(1,1) << "," << hessian(2,2) << endl
+             << "\toffset: " << offset << " distance: " << distance << endl ;
+    #endif
 }
 
 /**
