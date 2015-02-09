@@ -1,6 +1,6 @@
 /**
  * @file min_golden.cc
- * N-dimensional algorithm for Golden Sector Search.
+ * N-dimensional algorithm for Golden Section Search.
  */
 #include <usml/ublas/ublas.h>
 #include <usml/types/min_golden.h>

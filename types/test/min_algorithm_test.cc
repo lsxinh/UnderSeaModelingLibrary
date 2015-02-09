@@ -1,8 +1,8 @@
 /**
- * @example types/test/golden_search_test.cc
+ * @example types/test/min_algorithm_test.cc
  */
 #include <boost/test/unit_test.hpp>
-#include <usml/types/min_golden.h>
+#include <usml/types/types.h>
 #include <stdexcept>
 
 using namespace boost::unit_test;
@@ -78,9 +78,9 @@ public:
         axis( 0, &_travel_time ) ;
         axis( 1, &_source_de ) ;
         axis( 2, &_source_az ) ;
-        _wave_rho = new data_grid<double, 3>(_axis);
-        _wave_theta = new data_grid<double, 3>(_axis);
-        _wave_phi = new data_grid<double, 3>(_axis);
+        _wave_rho = new data_grid<double, 3>(axes());
+        _wave_theta = new data_grid<double, 3>(axes());
+        _wave_phi = new data_grid<double, 3>(axes());
         size_t k = 0;
         size_t index[3];
         for (size_t nt = 0; nt < 3; ++nt) {

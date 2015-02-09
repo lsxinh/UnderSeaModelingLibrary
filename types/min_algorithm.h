@@ -8,6 +8,8 @@
 
 namespace usml {
 namespace types {
+/// @ingroup min_grid
+/// @{
 
 /**
  * N-dimensional algorithm for numerical minimization.  Minimizing a field
@@ -28,7 +30,7 @@ public:
     /**
      * Create N-dimensional field for numerical minimization.
      *
-     * @param   num_dims    Number of dimension for this minimization.
+     * @param   field    N-dimensional field for numerical minimization.
      */
     min_algorithm( min_grid& field ) :
         _field(field),
@@ -67,5 +69,6 @@ protected:
     seq_vector** _axis;
 };
 
+/// @}
 } /* namespace types */
 } /* namespace usml */

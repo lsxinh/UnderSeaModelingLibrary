@@ -8,14 +8,16 @@
 
 namespace usml {
 namespace types {
+/// @ingroup min_grid
+/// @{
 
 /**
  * N-dimensional field for numerical minimization. The field has a seq_vector
  * axes in each dimension, and the field is defined at each point in this grid.
  * The gridded values are used to search for the axis offsets that would
- * result in a global minimum in the interpolated field.  This algorithm assumes
- * that global minimum for the interpolated field is bound by the points
- * around the minimum in the gridded field.
+ * result in a local minimum in the interpolated field.  This algorithm assumes
+ * that only a single local minimum for the interpolated field exists in
+ * the neighborhood around the minimum in the gridded field.
  */
 class min_grid {
 public:
@@ -77,7 +79,7 @@ public:
 
     /**
      * Used by sub-classes to define the location at which to start the search.
-     * This algorithm assumes that global minimum for the interpolated field
+     * This algorithm assumes that local minimum for the interpolated field
      * is bound by the points around this location.
      *
      * @return  Index numbers for the axes values that represent the
@@ -86,6 +88,17 @@ public:
      *          in this minimization.
      */
     virtual const size_t* initial_best() = 0;
+
+protected:
+
+    /**
+     * Retrieves axis associated with one dimension of the minimization.
+     *
+     * @return          Reference to an array of axis.
+     */
+    seq_vector** axes() {
+        return _axis ;
+    }
 
 private:
 
@@ -97,5 +110,6 @@ private:
 
 };
 
+/// @}
 } /* namespace types */
 } /* namespace usml */

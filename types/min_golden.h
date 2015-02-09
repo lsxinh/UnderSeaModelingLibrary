@@ -1,6 +1,6 @@
 /**
  * @file min_golden.h
- * N-dimensional algorithm for Golden Sector Search.
+ * N-dimensional algorithm for Golden Section Search.
  */
 #pragma once
 
@@ -8,28 +8,48 @@
 
 namespace usml {
 namespace types {
+/// @ingroup min_grid
+/// @{
 
 /**
- * N-dimensional algorithm for the Golden Sector Search.  The Golden Sector
+ * N-dimensional algorithm for the Golden Section Search.  The Golden Section
  * Search is a form of iterative bisection that uses uneven sections at each
  * step. It does not require the calculation of field derivatives.
  *
- * The algorithm assumes that the global minima is located in the interval
- * [a,b] around the minimum of the gridded field.  The best guess so far,
- * called "g", is initialized to the location of the minimum of the gridded
+ * The algorithm searches for a local minima in the interval [a,b]
+ * around the minimum of the gridded field.  It assumes that only one
+ * local minima exists in this interval. The best guess so far, called "g",
+ * is initialized to the location of the minimum of the gridded
  * field.  At each step in the iteration, the algorithm creates a probe point,
  * called "p" in the larger of the two intervals [a,g] or [g,b].  The probe
  * point is placed such that it divides the larger interval into new sections
  * whose lengths are related by the Golden Ratio.  At each step, the interval
  * is reduced such that the lowest value so far is inside the new interval.
+ *
+ * In this implementation, several conditions can terminate the search:
+ *
+ *   - The iteration_max() property controls the maximum number of allowed
+ *     iterations.  This defaults to 40.  Setting a hard limit prevents
+ *     the algorithm from getting stuck in an infinite loop.
+ *   - The iteration will also terminate if the difference between
+ *     the minimum and maximum value of the field is less than the value
+ *     defined by the func_tolerance() property.
+ *   - The iteration will also terminate if the norm of the difference
+ *     between the “a” and “b” limits of the interval, relative to the
+ *     original size of the interval, is less than the value defined by
+ *     the interval_tolerance() property.
+ *
+ * @xref Numerical Recipes: The Art of Scientific Computing,
+ *       Third Edition (2007), Cambridge University Press, pp. 492-496.
  */
 class min_golden : public min_algorithm {
 public:
 
     /**
-     * Create N-dimensional field for numerical minimization.
+     * Initialize the a, b, g, and p locations, and their function values,
+     * to setup the Golden Section Search.
      *
-     * @param   num_dims    Number of dimension for this minimization.
+     * @param   field    N-dimensional field for numerical minimization.
      */
     min_golden( min_grid& field ) ;
 
@@ -39,8 +59,11 @@ public:
     virtual ~min_golden() ;
 
     /**
-     * Search for the axis locations that would result in a global minimum
-     * in the interpolated field.
+     * Iteratively places a the probe point such that it divides the larger
+     * interval into new sections whose lengths are related by the
+     * Golden Ratio.  At each iteration, the interval is reduced to
+     * a smaller interval [a’,b’] such that the lowest value found
+     * so far is inside the new interval.
      *
      * @return  Location at which field value is minimized.  Returned as an
      *          array of double values whose size is equal to the number of
@@ -141,5 +164,6 @@ private:
     double* _width ;
 };
 
+/// @}
 } /* namespace types */
 } /* namespace usml */
