@@ -74,7 +74,7 @@ public:
         // construct a data grids from wavefront locations as a function of
         // travel_time, source_de, source_az
 
-        std::fill( _initial_best, _initial_best+3, 0 ) ;
+        std::fill( _initial_best, _initial_best+3, 1 ) ;
         axis( 0, &_travel_time ) ;
         axis( 1, &_source_de ) ;
         axis( 2, &_source_az ) ;
@@ -227,7 +227,7 @@ BOOST_AUTO_TEST_CASE( golden_search ) {
 
     pedersen_caustic_scenario field ;
     min_golden search(field) ;
-    search.iteration_max(2) ;
+    // search.iteration_max(2) ;
 
     // execute numerical minimization and display result
 

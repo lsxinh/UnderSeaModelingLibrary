@@ -32,19 +32,13 @@ public:
      *
      * @param   field    N-dimensional field for numerical minimization.
      */
-    min_algorithm( min_grid& field ) :
-        _field(field),
-        _num_dims(field.num_dims())
-    {
-        _axis = new seq_vector*[_num_dims];
+    min_algorithm( min_grid& field ) : _field(field) {
     }
 
     /**
      * Cleanup memory owned by this class.
      */
     virtual ~min_algorithm() {
-        for (size_t dim = 0; dim < _num_dims; ++dim) delete _axis[dim];
-        delete[] _axis;
     }
 
     /**
@@ -61,12 +55,6 @@ protected:
 
     /** N-dimensional field for numerical minimization. */
     min_grid& _field;
-
-    /** Number of dimensions in this minimization. */
-    const size_t _num_dims;
-
-    /** Axis associated with each dimension of the minimization. */
-    seq_vector** _axis;
 };
 
 /// @}

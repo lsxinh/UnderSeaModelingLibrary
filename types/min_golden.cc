@@ -21,20 +21,20 @@ min_golden::min_golden( min_grid& field ) :
 {
     // create memory for N-dimensional locations
 
-    _pos_a = new double[_num_dims];
-    _pos_b = new double[_num_dims];
-    _pos_g = new double[_num_dims];
-    _pos_p = new double[_num_dims];
-    _width = new double[_num_dims];
+    _pos_a = new double[_field.num_dims()];
+    _pos_b = new double[_field.num_dims()];
+    _pos_g = new double[_field.num_dims()];
+    _pos_p = new double[_field.num_dims()];
+    _width = new double[_field.num_dims()];
 
     // initialize locations in each dimension
 
     const size_t* index = _field.initial_best() ;
-    for ( size_t dim=0 ; dim < _num_dims ; ++dim ) {
-        _pos_a[dim] = _axis[dim]->operator[]( index[dim]-1 ) ;
-        _pos_g[dim] = _axis[dim]->operator[]( index[dim] ) ;
+    for ( size_t dim=0 ; dim < _field.num_dims(); ++dim ) {
+        _pos_a[dim] = _field.axis(dim)->operator[]( index[dim]-1 ) ;
+        _pos_g[dim] = _field.axis(dim)->operator[]( index[dim] ) ;
         _pos_p[dim] = _pos_g[dim] ;
-        _pos_b[dim] = _axis[dim]->operator[]( index[dim]+1 ) ;
+        _pos_b[dim] = _field.axis(dim)->operator[]( index[dim]+1 ) ;
         _width[dim] = _pos_b[dim] - _pos_a[dim] ;
     }
 
