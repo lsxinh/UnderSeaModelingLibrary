@@ -158,6 +158,20 @@ class USML_DECLSPEC wave_queue {
     }
 
     /**
+     * Propagation step size (seconds).
+     */
+    inline double time_step() const {
+        return _time_step ;
+    }
+
+    /**
+     * List of acoustic targets.
+     */
+    inline const wposition* targets() const {
+        return _targets;
+    }
+
+    /**
      * Return next element in the wavefront.
      */
     inline const wave_front* next() {
@@ -645,6 +659,12 @@ class USML_DECLSPEC wave_queue {
      *              d(DE)^2 = d(total)^2 - d(time)^2 - d(AZ)^2
      * </pre>
      *
+     * @param   t1          Row number of the current target.
+     * @param   t2          Column number of the current target.
+     * @param   de          D/E angle index number.  Can not equal a value
+     *                      at the edge of the ray fan.
+     * @param   az          AZ angle index number.  Can not equal a value
+     *                      at the edge of the ray fan.
      * @param   distance2   Distance squared to each of the 27 neighboring
      *                      points. The first index is time, the second is D/E
      *                      and the third is AZ.
@@ -662,7 +682,9 @@ class USML_DECLSPEC wave_queue {
      *                      May be updated by this routine if target is far
      *                      outside of ray fan. (input/output)
      */
-    static void compute_offsets(
+    void compute_offsets(
+        size_t t1, size_t t2,
+        size_t de, size_t az,
         const double distance2[3][3][3], const c_vector<double,3>& delta,
         c_vector<double,3>& offset, c_vector<double,3>& distance,
         bool& unstable ) ;

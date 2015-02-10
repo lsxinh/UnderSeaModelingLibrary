@@ -7,7 +7,7 @@
 #include <usml/waveq3d/reflection_model.h>
 #include <usml/waveq3d/spreading_ray.h>
 #include <usml/waveq3d/spreading_hybrid_gaussian.h>
-
+#include <usml/waveq3d/offset_min_grid.h>
 
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/triangular.hpp>
@@ -469,7 +469,7 @@ void wave_queue::build_eigenray(
         }
     }
 
-    compute_offsets(distance2, delta, offset, distance, unstable);
+    compute_offsets(t1,t2,de,az,distance2,delta,offset,distance,unstable);
 
     // build basic eigenray products
 
@@ -618,83 +618,94 @@ void wave_queue::build_eigenray(
  * Find relative offsets and true distances in time, D/E, and azimuth.
  */
 void wave_queue::compute_offsets(
+    size_t t1, size_t t2, size_t de, size_t az,
     const double distance2[3][3][3], const c_vector<double,3>& delta,
     c_vector<double,3>& offset, c_vector<double,3>& distance,
     bool& unstable )
 {
-    unstable = false ;
+    unstable = true;
 
-    // compute 1st and 2nd derivatives of distance2
-    // use analytic solution for the determinant of a 3x3 matrix
+    //***
+    // standard algorithm is to compute using Hessian inverse
 
-    scalar_vector<double> unit(3,1.0);
-    double center ;
-    c_vector<double,3> gradient ;
-    c_matrix<double,3,3> hessian ;
-    make_taylor_coeff( distance2, unit, center, gradient, hessian, unstable ) ;
+    if (!unstable) {
 
-    // compute offsets
-    // solves H x = g using x = inv(H) g ;
-    // uses analytic solution for the inverse of a symmetric 3x3 matrix
+        // compute 1st and 2nd derivatives of distance2
 
-    const double determinant = ( unstable ) ? 0.0 :
-        hessian(0,0) * ( hessian(1,1) * hessian(2,2) - hessian(1,2) * hessian(2,1) )
-      + hessian(0,1) * ( hessian(1,2) * hessian(2,0) - hessian(1,0) * hessian(2,2) )
-      + hessian(0,2) * ( hessian(1,0) * hessian(2,1) - hessian(2,1) * hessian(2,0) ) ;
-    unstable = abs(determinant) < 1e-10 ;
+        scalar_vector<double> unit(3, 1.0);
+        double center;
+        c_vector<double, 3> gradient;
+        c_matrix<double, 3, 3> hessian;
+        make_taylor_coeff(distance2, unit, center, gradient, hessian, unstable);
 
-    #ifdef DEBUG_EIGENRAYS
-        cout << "*** wave_queue::compute_offsets ***" << endl ;
-        cout << "\tgradient: " << gradient << endl ;
-        cout << "\thessian: " << hessian << endl ;
-        cout << "\tdeterminant: " << determinant << endl ;
-    #endif
+        // compute determinant for latter use in matrix inverse
 
-    if ( unstable ) {
+        const double determinant = ( unstable ) ? 0.0 :
+                hessian(0,0) * ( hessian(1,1) * hessian(2,2) - hessian(1,2) * hessian(2,1) )
+              + hessian(0,1) * ( hessian(1,2) * hessian(2,0) - hessian(1,0) * hessian(2,2) )
+              + hessian(0,2) * ( hessian(1,0) * hessian(2,1) - hessian(2,1) * hessian(2,0) ) ;
+        unstable = abs(determinant) < 1e-10;
+
         #ifdef DEBUG_EIGENRAYS
-            if (unstable) cout << "\tsimple inv" ;
+            cout << "*** wave_queue::compute_offsets ***" << endl;
+            cout << "\tgradient: " << gradient << endl;
+            cout << "\thessian: " << hessian << endl;
+            cout << "\tdeterminant: " << determinant << endl;
         #endif
-        for ( size_t n=0 ; n < 3 ; ++n ) {
-            const double h = max( 1e-10, hessian(n,n) ) ;
-            offset(n) = -gradient(n) / h * delta(n) ;
-        }
-        distance(1) = center - distance(0) - distance(2) ;
-        for ( size_t n=0 ; n < 3 ; ++n ) {
-            distance(n) = sqrt( max( 0.0, distance(n) ) ) ;
-            if ( offset(n) < 0.0 ) distance(n) *= -1.0 ;
-        }
-    } else {
-        #ifdef DEBUG_EIGENRAYS
-            cout << "\tfull inverse" ;
-        #endif
-        c_matrix<double,3,3> inverse ;
-        inverse(0,0) = hessian(1,1) * hessian(2,2) - hessian(1,2) * hessian(2,1) ;
-        inverse(1,0) = hessian(1,2) * hessian(2,0) - hessian(1,0) * hessian(2,2) ;
-        inverse(2,0) = hessian(1,0) * hessian(2,1) - hessian(1,1) * hessian(2,0) ;
-        inverse(0,1) = inverse(1,0) ;
-        inverse(1,1) = hessian(0,0) * hessian(2,2) - hessian(0,2) * hessian(2,0) ;
-        inverse(2,1) = hessian(2,0) * hessian(0,1) - hessian(0,0) * hessian(2,1) ;
-        inverse(0,2) = inverse(2,0) ;
-        inverse(1,2) = inverse(2,1) ;
-        inverse(2,2) = hessian(0,0) * hessian(1,1) - hessian(0,1) * hessian(1,0) ;
-        inverse /= determinant ;
-        noalias(offset) = element_prod( delta, prod( inverse, -gradient ) ) ;
 
-        for ( size_t n=0 ; n < 3 ; ++n ) {
-            distance(n) = -gradient(n)*offset(n)
-                    -0.5*hessian(n,n)*offset(n)*offset(n) ;
-            distance(n) = sqrt( max( 0.0, distance(n) ) ) ;
-            if ( offset(n) < 0.0 ) distance(n) *= -1.0 ;
+        if (!unstable) {
+
+            // compute offsets by inverting H x = g to create x = inv(H) g ;
+            // uses analytic solution for the inverse of a symmetric 3x3 matrix
+
+            c_matrix<double, 3, 3> inverse;
+            inverse(0,0) = hessian(1,1) * hessian(2,2) - hessian(1,2) * hessian(2,1);
+            inverse(1,0) = hessian(1,2) * hessian(2,0) - hessian(1,0) * hessian(2,2);
+            inverse(2,0) = hessian(1,0) * hessian(2,1) - hessian(1,1) * hessian(2,0);
+            inverse(0,1) = inverse(1,0);
+            inverse(1,1) = hessian(0,0) * hessian(2,2) - hessian(0,2) * hessian(2,0);
+            inverse(2,1) = hessian(2,0) * hessian(0,1) - hessian(0,0) * hessian(2,1);
+            inverse(0,2) = inverse(2,0);
+            inverse(1,2) = inverse(2,1);
+            inverse(2,2) = hessian(0,0) * hessian(1,1) - hessian(0,1) * hessian(1,0);
+            inverse /= determinant;
+            noalias(offset) = element_prod( delta, prod(inverse,-gradient) );
+
+            // use Taylor series to compute distance along each axis
+
+            for (size_t n = 0; n < 3; n += 2) {
+                distance(n) = -gradient(n) * offset(n)
+                        - 0.5 * hessian(n,n) * offset(n) * offset(n);
+                distance(n) = sqrt(max(0.0, distance(n)));
+                if (offset(n) < 0.0) distance(n) *= -1.0;
+            }
+            distance(1) = sqrt(max(0.0, center - distance(0) - distance(2)));
+            if (offset(1) < 0.0) distance(1) *= -1.0;
+
+            #ifdef DEBUG_EIGENRAYS
+                cout << "\tfull inverse, offset: " << offset << " distance: " << distance << endl;
+            #endif
         }
-        distance(1) = sqrt( max( 0.0, center - distance(0) - distance(2) ) ) ;
-        if ( offset(1) < 0.0 ) distance(1) *= -1.0 ;
     }
 
-    #ifdef DEBUG_EIGENRAYS
-        cout << " gradient: " << gradient(0) << "," << gradient[1] << "," << gradient[2]
-             << " curvature:  " << hessian(0,0) << "," << hessian(1,1) << "," << hessian(2,2) << endl
-             << "\toffset: " << offset << " distance: " << distance << endl ;
-    #endif
+    //***
+    // fallback algorithm is to compute using Golden Section Search
+
+    if (unstable) {
+        offset_min_grid field(t1, t2, de, az, *this);
+        min_golden search(field);
+        search.func_tolerance(1e-6) ;
+        search.interval_tolerance(1e-6) ;
+        const double* position = search.minimize();
+        const double* dist = field.distance(position);
+        for ( size_t n=0; n < 3 ; ++n ) {
+            offset(n) = position[n] ;
+            distance(n) = dist[n] ;
+        }
+        #ifdef DEBUG_EIGENRAYS
+            cout << "\tgolden, offset: " << offset << " distance: " << distance << endl;
+        #endif
+    }
 }
 
 /**
